@@ -1,0 +1,150 @@
+#include <Wire.h>
+#include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_MS_PWMServoDriver.h"
+#include <SPI.h>
+#include <SD.h>
+
+
+#define LED_Pin           13    //Pin for signal LED
+#define servPotWip        A0   //Pin for actuator potentiometer wiper
+#define recordPin         2  //Pin to start recordingdata or automatic test
+#define testSwitch        4  //Pin toggled low/high to determine whether manual or automatic test is executed
+#define armPin            3  //Pin to arm test rig
+#define LC_P              A2 //Load cell positive input
+#define LC_N              A1 //Load cell negative input
+#define automatic         1
+#define manual            0
+
+const int chipSelect = 10;
+
+Adafruit_MotorShield AFMS = Adafruit_MotorShield(); //Create motor shield object
+Adafruit_DCMotor *linearActuator = AFMS.getMotor(1); //Select motor on M1 port
+
+unsigned short LA_Pos = 0;
+bool whichTest = LOW; //If low, manual test. If high, automatic test.
+
+void setup() {
+  // put your setup code here, to run once:
+
+  
+  analogReadResolution(12);
+  pinMode(armPin, INPUT);
+  pinMode(testSwitch, INPUT);
+  pinMode(recordPin, INPUT);
+  pinMode(LED_Pin, OUTPUT);
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.print("Initializing SD card...");
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  Serial.println("card initialized.");
+}
+
+void loop() {
+  
+  whichTest = digitalRead(testSwitch);
+  Serial.println(whichTest);
+  
+  switch(whichTest){
+    case 0: 
+      Serial.println("manual");
+      manualTest();
+    //break;
+
+    case automatic:
+      automaticTest();
+    break;
+
+    default:
+    Serial.println("no case");
+    break;
+  }
+  //LA_Pos = analogRead(servPotWip);
+  //Serial.println(LA_Pos);
+  /*if(LA_Pos > 4000){
+    linearActuator -> run(BACKWARD);
+  }
+  if(LA_Pos < 1000){
+    linearActuator -> run(FORWARD);
+  }*/
+}
+
+void manualTest(){
+  
+  bool Armed = false;
+  bool record = false;
+  //Arm Test rig
+  
+  while(Armed == false){
+    if (digitalRead(armPin) == HIGH){
+      Armed = true;
+      SD.remove("datalog.txt");
+      Serial.println("Armed");
+    }
+    else{
+      delay(1);
+    }
+  }
+  //Wait for recordPin to be high
+  while(record == false){
+    if (digitalRead(recordPin) == HIGH){
+      record = true;
+      Serial.println("recording");
+    }
+    else{
+      delay(1);
+    }
+  }
+  //flash LED when starting to log data
+    analogWrite(LED_Pin, HIGH);
+    Serial.println("LED High");
+  
+  //Start logging data
+    RDATA();
+
+  //finish logging when memory full
+    analogWrite(LED_Pin, LOW);
+    Serial.println("Finished");
+  //Dump to Computer
+}
+
+void automaticTest(){
+  //Arm test rig
+
+  //start motor to tighten string and start test
+
+  //start reading data immediately, stop when it plateues
+
+  //
+}
+
+void RDATA(){
+
+  String dataString = "";
+  unsigned long timeRef = millis();
+  unsigned long timeNow = 0;
+  while(timeNow <= timeRef + 10000){
+    timeNow = millis();
+    dataString = analogRead(LC_P) - analogRead(LC_N);
+    File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  
+    // if the file is available, write to it:
+    if (dataFile) {
+      dataFile.println(dataString);
+      dataFile.close();
+      // print to the serial port too:
+      Serial.println(dataString);
+    }
+    // if the file isn't open, pop up an error:
+    else {
+      Serial.println("error opening datalog.txt");
+    }
+  }
+}
