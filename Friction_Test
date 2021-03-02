@@ -15,6 +15,11 @@
 #define automatic         1
 #define manual            0
 
+#define motorFreq   1600
+#define motorPWM    20   //0 to 255
+#define potWipMax   3550
+#define potWipMin   420  //pot wiper reading to indicate minimum position (actually 398, but needs a buffer)
+
 const int chipSelect = 10;
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); //Create motor shield object
@@ -45,27 +50,60 @@ void setup() {
     while (1);
   }
   Serial.println("card initialized.");
+
+  AFMS.begin(motorFreq, NULL);
+  linearActuator -> setSpeed(motorPWM);
+
 }
 
 void loop() {
   
-  whichTest = digitalRead(testSwitch);
-  Serial.println(whichTest);
+  bool Armed = false;
+
+  bool record = false;
   
-  switch(whichTest){
-    case 0: 
-      Serial.println("manual");
-      manualTest();
-    //break;
+  //Arm Test rig
+  while(Armed == false){
+    if (digitalRead(armPin) == HIGH){
+      Armed = true;
+      SD.remove("datalog.txt");
+      Serial.println("Armed");
+    }
+    else{
+      delay(1);
+    }
+  }  
 
-    case automatic:
-      automaticTest();
-    break;
+  //Wait for recordPin to be high
+  while(record == false){
+    if (digitalRead(recordPin) == HIGH){
+        whichTest = digitalRead(testSwitch);
+        //Serial.println(whichTest);
 
-    default:
-    Serial.println("no case");
-    break;
+        record = true;
+        Serial.println("recording");
+        
+        switch(whichTest){
+          case manual: 
+            Serial.println("manual");
+            manualTest();
+          break;
+      
+          case automatic:
+            Serial.println("automatic");
+            automaticTest();
+          break;
+      
+          default:
+          Serial.println("no case");
+          break;
+      }
+    }
+    else{
+      delay(1);
+    }
   }
+  
   //LA_Pos = analogRead(servPotWip);
   //Serial.println(LA_Pos);
   /*if(LA_Pos > 4000){
@@ -78,30 +116,7 @@ void loop() {
 
 void manualTest(){
   
-  bool Armed = false;
-  bool record = false;
-  //Arm Test rig
-  
-  while(Armed == false){
-    if (digitalRead(armPin) == HIGH){
-      Armed = true;
-      SD.remove("datalog.txt");
-      Serial.println("Armed");
-    }
-    else{
-      delay(1);
-    }
-  }
-  //Wait for recordPin to be high
-  while(record == false){
-    if (digitalRead(recordPin) == HIGH){
-      record = true;
-      Serial.println("recording");
-    }
-    else{
-      delay(1);
-    }
-  }
+
   //flash LED when starting to log data
     analogWrite(LED_Pin, HIGH);
     Serial.println("LED High");
@@ -116,13 +131,33 @@ void manualTest(){
 }
 
 void automaticTest(){
-  //Arm test rig
+
+  //flash LED when starting to log data
+    analogWrite(LED_Pin, HIGH);
+    Serial.println("LED High");
 
   //start motor to tighten string and start test
+  linearActuator -> run(BACKWARD); //Actually forward,assuming red wire 
 
   //start reading data immediately, stop when it plateues
+  RDATA();
 
-  //
+  //finish logging when memory full
+  analogWrite(LED_Pin, LOW);
+  Serial.println("Finished");
+
+  //Restore Actuator to starting position
+  linearActuator -> run(FORWARD);
+  Serial.println("Rewinding actuator, please wait.");
+
+  unsigned long potWipe = analogRead(servPotWip);
+  while(potWipe > potWipMin){
+      potWipe = analogRead(servPotWip);
+      delay(1); 
+  }
+  
+  linearActuator -> run(RELEASE);
+  Serial.println("Actuator position reset.");
 }
 
 void RDATA(){
@@ -141,6 +176,16 @@ void RDATA(){
       dataFile.close();
       // print to the serial port too:
       Serial.println(dataString);
+      if(whichTest == automatic){
+        LA_Pos = analogRead(servPotWip);
+        Serial.print("        ");
+        Serial.println(LA_Pos);
+        if(LA_Pos > potWipMax){
+          linearActuator -> run(RELEASE);
+          Serial.println("Maximum actuator position");
+          break;
+        }
+      }
     }
     // if the file isn't open, pop up an error:
     else {
