@@ -163,10 +163,14 @@ void automaticTest(){
 void RDATA(){
 
   String dataString = "";
-  unsigned long timeRef = millis();
+  unsigned long timeRef = micros();
   unsigned long timeNow = 0;
-  while(timeNow <= timeRef + 10000){
-    timeNow = millis();
+  unsigned long timeThen = 0;
+  unsigned long deltaTime = 0;
+  while(timeNow <= timeRef + 10000000){
+    timeThen = timeNow;
+    timeNow = micros();
+    deltaTime = timeNow - timeThen;
     dataString = analogRead(LC_P) - analogRead(LC_N);
     File dataFile = SD.open("datalog.txt", FILE_WRITE);
   
@@ -176,6 +180,11 @@ void RDATA(){
       dataFile.close();
       // print to the serial port too:
       Serial.println(dataString);
+
+      Serial.print("\nDelta Time: ");
+      Serial.println(deltaTime);
+      Serial.println("\n");
+      
       if(whichTest == automatic){
         LA_Pos = analogRead(servPotWip);
         Serial.print("        ");
