@@ -134,6 +134,8 @@ http://www.eclipse.org/legal/epl-2.0.
 //ADS1256
 //**********************************************************************************
 
+/*This ADS1256 class is derived from the library by Adien Akhmad at https://github.com/adienakhmad/ADS1256
+Modified for compatibility with ESP architecture used by Arduino Due*/
 class ADS1256 {
  public:
   ADS1256(float clockspdMhz, float vref, bool useresetpin);
