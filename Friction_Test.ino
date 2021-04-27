@@ -1,12 +1,4 @@
-/*
-Copyright (c) 2020
-Steward Observatory Engineering & Technical Services, University of Arizona
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-*/
 
-/* This friction test makes measurements*/
 
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
@@ -33,17 +25,17 @@ http://www.eclipse.org/legal/epl-2.0.
 #define potWipMax   3550
 #define potWipMin   420  //pot wiper reading to indicate minimum position (actually 398, but needs a buffer)
 
-#define ADCDRDYpin  5
-#define ADCCSpin    6
-#define ADCRSTpin   7
+//#define ADCDRDYpin  5
+//#define ADCCSpin    6
+//#define ADCRSTpin   7
 
 #define cmdRDATA    0x01
 #define cmdRESET    0xFE
 
 //Pin Definitions
-#define pinDRDY 9
-#define pinCS   10
-#define pinRST  8
+#define pinDRDY 5 //-> 9 to 5
+#define pinCS   6 //-> 10 to 6
+#define pinRST  7 //-> 8 to 7
 
 #define clockMHZ 7.68
 
@@ -134,8 +126,6 @@ http://www.eclipse.org/legal/epl-2.0.
 //ADS1256
 //**********************************************************************************
 
-/*This ADS1256 class is derived from the library by Adien Akhmad at https://github.com/adienakhmad/ADS1256
-Modified for compatibility with ESP architecture used by Arduino Due*/
 class ADS1256 {
  public:
   ADS1256(float clockspdMhz, float vref, bool useresetpin);
@@ -713,16 +703,16 @@ void RADCDATA(){
 }
 
 void ADCSetup(){
-  pinMode(ADCDRDYpin, INPUT);
-  pinMode(ADCCSpin, OUTPUT);
-  pinMode(ADCRSTpin, OUTPUT);
-  digitalWrite(ADCRSTpin, HIGH);
+  pinMode(pinDRDY, INPUT);
+  pinMode(pinCS, OUTPUT);
+  pinMode(pinRST, OUTPUT);
+  digitalWrite(pinRST, HIGH);
 }
 
 void CSON(){
-  digitalWrite(ADCCSpin, LOW);
+  digitalWrite(pinCS, LOW);
 }
 
 void CSOFF(){
-  digitalWrite(ADCCSpin, HIGH);
+  digitalWrite(pinCS, HIGH);
 }
